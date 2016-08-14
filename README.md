@@ -12,8 +12,16 @@ var polyfill = require('./polyfill')
 
 If you put the cursor on the word `through2`,
 and press `gf`, the file `/path/to/node_modules/through2/through2.js` will be loaded in the current window.
+Because the entry to `through2` is specified as `through2.js` in its package.json:
+```json
+{
+  "main": "through2.js"
+}
 
-Also, if you press `gf` on `./polyfill`, `/path/to/polyfill` will be loaded.
+```
+
+Relative paths are also resolved as expected.
+If you press `gf` on `./polyfill`, `/path/to/polyfill` will be loaded.
 
 ## Install
 
