@@ -25,10 +25,26 @@ If you press `gf` on `./polyfill`, `/path/to/polyfill` will be loaded.
 
 ## Install
 
-[Vundle](https://github.com/VundleVim/Vundle.vim) is recommend:
+### Vundle
+[Vundle](https://github.com/VundleVim/Vundle.vim) is the recommended way:
 
 ```vim
 Plugin "zoubin/vim-gotofile"
+
+```
+
+then run the following in Vim:
+
+```vim
+:source %
+:PluginInstall
+
+```
+
+### Pathogen
+```bash
+cd ~/.vim/bundle
+git clone https://github.com/zoubin/vim-gotofile
 
 ```
 
