@@ -1,0 +1,18 @@
+{
+  "name": "vim-gotofile",
+  "version": "1.0.0",
+  "description": "A vim plugin to go to files in node_modules",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/zoubin/vim-gotofile.git"
+  },
+  "author": "zoubin",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/zoubin/vim-gotofile/issues"
+  },
+  "homepage": "https://github.com/zoubin/vim-gotofile#readme",
+  "dependencies": {
+    "resolve": "^1.1.7"
+  }
+}
