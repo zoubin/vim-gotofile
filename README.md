@@ -58,3 +58,25 @@ nmap [f <Plug>GotoFile
 
 ```
 
+## Configure
+To add more module directories:
+```vim
+au BufNewFile,BufRead *.js,*.jsx,*.es6 call gotofile#SetOptions({
+\ 'moduleDirectory': ['node_modules', 'web_modules']
+\ })
+
+```
+
+To enhance `gf` in css files:
+```vim
+let g:gotofile_extensions = ['js', 'jsx', 'es6', 'css', 'scss', 'sass']
+" lookup the `style` field first instead of the `main` field in the package.json
+au BufNewFile,BufRead *.css,*.scss,*.sass call gotofile#SetOptions({
+\ 'alwaysTryRelative': 1,
+\ 'main': 'style',
+\ 'extensions': ['.css', '.scss', '.sass'],
+\ 'moduleDirectory': ['node_modules', 'web_modules']
+\ })
+
+```
+
