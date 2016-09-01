@@ -44,7 +44,7 @@ fun s:Init()
   else
     let extensions = ['js', 'jsx', 'es6']
   endif
-  if index(extensions, ext) > 0
+  if index(extensions, ext) >= 0
     if !exists("no_plugin_maps") && !exists("no_mail_maps")
       if !hasmapto('<Plug>GotoFile')
         "nmap [f :call <SID>GotoFile()<CR>
