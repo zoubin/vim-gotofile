@@ -8,6 +8,9 @@ if exists('g:loaded_gotofile')
 endif
 let g:loaded_gotofile = 1
 
+" make '@' can be included in path names
+exe 'set isfname='.&isfname.',@-@'
+
 let s:cmd = expand('<sfile>:h:h') . '/bin/resolve.js'
 
 fun s:AddArgs(args, name, value)
