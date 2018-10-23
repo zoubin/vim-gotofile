@@ -4,6 +4,7 @@
 var path = require('path')
 var resolve = require('resolve')
 var id = process.argv[2]
+var readPkgUp = require('read-pkg-up')
 
 function parseArgs (argv) {
   var options = {}
@@ -30,6 +31,11 @@ if (opts.filename) {
 }
 opts.basedir = opts.basedir || process.cwd()
 
+var {pkg, path: pkgPath} = readPkgUp.sync({ cwd: opts.basedir })
+if (pkg['vim-gotofile']) {
+  Object.assign(opts, pkg['vim-gotofile'])
+}
+
 if (opts.main) {
   opts.packageFilter = function (pkg, pkgFile) {
     if (pkg[opts.main]) {
@@ -39,22 +45,47 @@ if (opts.main) {
   }
 }
 
-if (~~opts.alwaysTryRelative === 1 && !path.isAbsolute(id) && id[0] !== '.') {
-  resolve('./' + id, opts, function (err, res) {
-    if (!err) {
-      process.stdout.write(res)
-    } else {
-      normalResolve(id)
+tryNormal(id)
+
+function tryAlias() {
+  if (!opts.alias) return
+  let alias = opts.alias
+  let pkgBase = path.dirname(pkgPath)
+  if (typeof alias === 'string') {
+    let info = opts.alias.split('|')
+    alias = path.resolve(pkgBase, info[0])
+    alias = require(alias)
+    for (let i = 1; i < info.length; i++) {
+      alias = alias[info[i]]
     }
-  })
-} else {
-  normalResolve(id)
+  }
+  for (let n of Object.keys(alias)) if (id.startsWith(n + path.sep)) {
+    return resolve(path.resolve(pkgBase, alias[n], id.slice(n.length + 1)), opts, function (ex, res) {
+      if (!ex) {
+        process.stdout.write(res)
+      }
+    })
+  }
 }
 
-function normalResolve (id) {
+function tryRelative() {
+  if (~~opts.alwaysTryRelative !== 1 || path.isAbsolute(id) || id[0] == '.') return tryAlias()
+
+  resolve('./' + id, opts, function (ex, res) {
+    if (!ex) {
+      process.stdout.write(res)
+    } else {
+      tryAlias()
+    }
+  })
+}
+
+function tryNormal() {
   resolve(id, opts, function (err, res) {
     if (!err) {
       process.stdout.write(res)
+    } else {
+      tryRelative()
     }
   })
 }

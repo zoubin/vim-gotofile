@@ -59,6 +59,10 @@ nmap [f <Plug>GotoFile
 ```
 
 ## Configure
+There are two ways to set options for this plugin: the vimrc way and the package.json way.
+
+### vimrc
+
 To add more module directories:
 ```vim
 au BufNewFile,BufRead *.js,*.jsx,*.es6 call gotofile#SetOptions({
@@ -79,4 +83,71 @@ au BufNewFile,BufRead *.css,*.scss,*.sass call gotofile#SetOptions({
 \ })
 
 ```
+
+### package.json
+Options can also be specified in `package.json`:
+
+Suppose the directory pkg has contents like:
+
+```
+pkg
+├── index.js
+├── node_modules
+│   └── y
+│       ├── index.pcss
+│       ├── package.json
+│       └── y.pcss
+├── package.json
+├── src
+│   └── test.js
+├── web_modules
+│   └── x
+│       └── index.js
+└── z.js
+
+```
+
+Here is `pkg/package.json`:
+
+```json
+{
+  "vim-gotofile": {
+    "moduleDirectory": ["node_modules", "web_modules"],
+    "extensions": [".pcss", ".js"],
+    "alwaysTryRelative": 1,
+    "alias": { "@src": "src" },
+    "main": "style"
+  }
+}
+
+```
+
+Then in `pkg/index.js` we can go to the correct files:
+```js
+require('x') // "moduleDirectory": ["node_modules", "web_modules"]
+require('y') // "extensions": [".pcss", ".js"],
+require('z') // "alwaysTryRelative": 1
+require('@src/test') // "alias": { "@src": "src" }
+
+```
+
+**Note**: The `alias` option can only be specified in this way.
+
+The `alias` option can also be specified as a string:
+
+```json
+{
+  "vim-gotofile": {
+    "moduleDirectory": ["node_modules", "web_modules"],
+    "extensions": [".pcss", ".js"],
+    "alwaysTryRelative": 1,
+    "alias": "config.json|alias",
+    "main": "style"
+  }
+}
+
+```
+
+The alias will be looked up in the `alias` field of file `pkg/config.json`.
+
 
