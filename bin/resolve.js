@@ -32,7 +32,7 @@ if (opts.filename) {
 opts.basedir = opts.basedir || process.cwd()
 
 var {pkg, path: pkgPath} = readPkgUp.sync({ cwd: opts.basedir })
-if (pkg['vim-gotofile']) {
+if (pkg && pkg['vim-gotofile']) {
   Object.assign(opts, pkg['vim-gotofile'])
 }
 
