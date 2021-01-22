@@ -13,16 +13,6 @@ exe 'set isfname='.&isfname.',@-@'
 
 let s:cmd = expand('<sfile>:h:h') . '/bin/resolve.js'
 
-fun s:AddArgs(args, name, value)
-  call add(a:args, '--' . a:name)
-  if type(a:value) == 3
-    call extend(a:args, a:value)
-  else
-    call add(a:args, a:value)
-  endif
-endfun
-
-
 fun s:GotoFile()
   let id = expand('<cfile>:S')
   let parent = expand('%:p:S')
