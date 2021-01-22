@@ -1,5 +1,5 @@
 # vim-gotofile
-A vim plugin to enhance the native `gf` command to go to `node_modules`.
+A vim plugin to enhance the native `gf` command to act like [node-resolve](https://github.com/browserify/resolve)
 
 ## Example
 Suppose you are editing `/path/to/index.js`:
@@ -59,95 +59,42 @@ nmap [f <Plug>GotoFile
 ```
 
 ## Configure
-There are two ways to set options for this plugin: the vimrc way and the package.json way.
 
-### vimrc
-
-To add more module directories:
 ```vim
-au BufNewFile,BufRead *.js,*.jsx,*.es6 call gotofile#SetOptions({
-\ 'moduleDirectory': ['node_modules', 'web_modules']
-\ })
+" files with specific extensions will use the enhanced gf
+" this is the default configuration
+let g:gotofile_extensions = ['.js', '.ts', '.jsx', '.tsx', '.es6', '.json']
 
 ```
 
-To enhance `gf` in css files:
 ```vim
-let g:gotofile_extensions = ['js', 'jsx', 'es6', 'css', 'scss', 'sass']
-" lookup the `style` field first instead of the `main` field in the package.json
-au BufNewFile,BufRead *.css,*.scss,*.sass call gotofile#SetOptions({
-\ 'alwaysTryRelative': 1,
-\ 'main': 'style',
-\ 'extensions': ['.css', '.scss', '.sass'],
-\ 'moduleDirectory': ['node_modules', 'web_modules']
-\ })
+" gf in css files
+let g:gotofile_extensions = ['.js', '.ts', '.jsx', '.tsx', '.es6', '.json', '.css', '.scss']
 
 ```
 
-### package.json
-Options can also be specified in `package.json`:
+A `.vim.gotofile.config.js` in your home directory can be used to provide more configurations.
 
-Suppose the directory pkg has contents like:
-
-```
-pkg
-├── index.js
-├── node_modules
-│   └── y
-│       ├── index.pcss
-│       ├── package.json
-│       └── y.pcss
-├── package.json
-├── src
-│   └── test.js
-├── web_modules
-│   └── x
-│       └── index.js
-└── z.js
-
-```
-
-Here is `pkg/package.json`:
-
-```json
-{
-  "vim-gotofile": {
-    "moduleDirectory": ["node_modules", "web_modules"],
-    "extensions": [".pcss", ".js"],
-    "alwaysTryRelative": 1,
-    "alias": { "@src": "src" },
-    "main": "style"
+```javascript
+const path = require('path')
+const fixture = tail => path.join(__dirname, 'path/to/my/project', tail)
+module.exports = [
+  {
+    fileType: ['.js', '.ts', '.jsx', '.tsx', '.es6', '.json'],
+    alias: {
+      // gf require('@as/utils')
+      '@as/utils': fixture('src/utils'),
+      // gf require('@as/components/awesome')
+      '@as/components': fixture('src/components')
+    },
+    // the default option is 'node_modules'
+    moduleDirectory: ['node_modules', 'web_modules']
+  },
+  {
+    fileType: ['.css', '.scss'],
+    // use the 'style' field in package.json to locate entries
+    main: 'style'
   }
-}
+]
 
 ```
-
-Then in `pkg/index.js` we can go to the correct files:
-```js
-require('x') // "moduleDirectory": ["node_modules", "web_modules"]
-require('y') // "extensions": [".pcss", ".js"],
-require('z') // "alwaysTryRelative": 1
-require('@src/test') // "alias": { "@src": "src" }
-
-```
-
-**Note**: The `alias` option can only be specified in this way.
-
-The `alias` option can also be specified as a string:
-
-```json
-{
-  "vim-gotofile": {
-    "moduleDirectory": ["node_modules", "web_modules"],
-    "extensions": [".pcss", ".js"],
-    "alwaysTryRelative": 1,
-    "alias": "config.json|alias",
-    "main": "style"
-  }
-}
-
-```
-
-The alias will be looked up in the `alias` field of file `pkg/config.json`.
-
-

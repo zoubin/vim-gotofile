@@ -1,92 +1,109 @@
 #!/usr/bin/env node
 'use strict'
 
-var path = require('path')
-var resolve = require('resolve')
-var id = process.argv[2]
-var readPkgUp = require('read-pkg-up')
+const path = require('path')
+const resolve = require('resolve')
+const id = process.argv[2]
+const parent = process.argv[3]
+const os = require('os')
+const fs = require('fs')
 
-function parseArgs (argv) {
-  var options = {}
-  var current
-  var arg
-  while (argv.length) {
-    arg = argv.shift()
-    if (arg[0] === '-') {
-      current = arg[1] === '-' ? arg.slice(2) : arg.slice(1)
-    } else if (current) {
-      if (options[current]) {
-        options[current] = [].concat(options[current], arg)
-      } else {
-        options[current] = arg
+//const ws = fs.createWriteStream(__dirname + '/log')
+//function log(str) {
+//  if (typeof str === 'string') {
+//    ws.write(str + '\n')
+//  } else {
+//    ws.write(JSON.stringify(str, null, 2) + '\n')
+//  }
+//}
+//process.on('exit', () => ws.end())
+
+function createOptions() {
+  let config = []
+  try {
+    // extensions
+    // moduleDirectory
+    // main
+    // alias
+    config = require(path.join(os.homedir(), '.vim.gotofile.config.js'))
+  } catch (e) {}
+  if (typeof config === 'function') {
+    config = config(parent)
+  }
+  config.push(
+    {
+      fileType: ['.wxml']
+    },
+    {
+      fileType: ['.js', '.ts', '.jsx', '.tsx', '.es6', '.json', '.wxml']
+    },
+    {
+      fileType: ['.css', '.scss', '.sass', '.wxss']
+    }
+  )
+  const parentExt = path.extname(parent)
+  let baseOpts = config.find(o => o.fileType.includes(parentExt))
+  if (!baseOpts) process.exit(1)
+
+  let opts = {
+    alias: baseOpts.alias,
+    basedir: path.dirname(parent),
+    extensions: baseOpts.extensions || baseOpts.fileType
+  }
+  if (baseOpts.moduleDirectory) opts.moduleDirectory = baseOpts.moduleDirectory
+  if (baseOpts.main) {
+    opts.packageFilter = function (pkg, pkgFile) {
+      if (pkg[baseOpts.main]) {
+        pkg.main = pkg[baseOpts.main]
       }
+      return pkg
     }
   }
-  return options
+  return opts
 }
 
-var opts = parseArgs(process.argv.slice(3))
-if (opts.filename) {
-  opts.basedir = path.dirname(opts.filename)
-}
-opts.basedir = opts.basedir || process.cwd()
-
-var {pkg, path: pkgPath} = readPkgUp.sync({ cwd: opts.basedir })
-if (pkg && pkg['vim-gotofile']) {
-  Object.assign(opts, pkg['vim-gotofile'])
-}
-
-if (opts.main) {
-  opts.packageFilter = function (pkg, pkgFile) {
-    if (pkg[opts.main]) {
-      pkg.main = pkg[opts.main]
-    }
-    return pkg
+async function bailout(tasks) {
+  for (let task of tasks) {
+    try {
+      const res = await task()
+      if (res) return res
+      if (res === false) return
+    } catch (e) {}
   }
 }
 
-tryNormal(id)
+function resolver(id, opts) {
+  return new Promise((rs, rj) => {
+    resolve(id, opts, function (err, res) {
+      if (err) return rj(err)
+      rs(res)
+    })
+  })
+}
 
-function tryAlias() {
+async function resolveWithAlias(id, opts) {
   if (!opts.alias) return
   let alias = opts.alias
-  let pkgBase = path.dirname(pkgPath)
-  if (typeof alias === 'string') {
-    let info = opts.alias.split('|')
-    alias = path.resolve(pkgBase, info[0])
-    alias = require(alias)
-    for (let i = 1; i < info.length; i++) {
-      alias = alias[info[i]]
-    }
+
+  if (alias[id]) {
+    return resolver(alias[id], opts)
   }
-  for (let n of Object.keys(alias)) if (id.startsWith(n + path.sep)) {
-    return resolve(path.resolve(pkgBase, alias[n], id.slice(n.length + 1)), opts, function (ex, res) {
-      if (!ex) {
-        process.stdout.write(res)
-      }
-    })
+
+  for (let k of Object.keys(alias)) {
+    if (id.startsWith(k + '/')) {
+      return resolver(path.resolve(alias[k], id.slice(k.length + 1)), opts)
+    }
   }
 }
 
-function tryRelative() {
-  if (~~opts.alwaysTryRelative !== 1 || path.isAbsolute(id) || id[0] == '.') return tryAlias()
-
-  resolve('./' + id, opts, function (ex, res) {
-    if (!ex) {
-      process.stdout.write(res)
-    } else {
-      tryAlias()
-    }
-  })
+async function main() {
+  const options = createOptions()
+  const res = await bailout([
+    () => resolver(id, options),
+    () => path.isAbsolute(id) ? false : undefined,
+    () => resolveWithAlias(id, options),
+    () => resolver('./' + id, options)
+  ])
+  if (res) process.stdout.write(res)
 }
-
-function tryNormal() {
-  resolve(id, opts, function (err, res) {
-    if (!err) {
-      process.stdout.write(res)
-    } else {
-      tryRelative()
-    }
-  })
-}
-
+main()
