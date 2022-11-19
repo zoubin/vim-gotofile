@@ -35,7 +35,7 @@ function createOptions() {
       fileType: ['.wxml']
     },
     {
-      fileType: ['.js', '.ts', '.jsx', '.tsx', '.es6', '.json', '.wxml']
+      fileType: ['.js', '.ts', '.jsx', '.tsx', '.es6', '.json', '.wxml', '.vue']
     },
     {
       fileType: ['.css', '.scss', '.sass', '.wxss']
