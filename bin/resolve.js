@@ -1,109 +1,83 @@
 #!/usr/bin/env node
 'use strict'
-
+const fs = require('node:fs/promises')
 const path = require('path')
 const resolve = require('resolve')
-const id = process.argv[2]
-const parent = process.argv[3]
-const os = require('os')
-const fs = require('fs')
 
-//const ws = fs.createWriteStream(__dirname + '/log')
-//function log(str) {
-//  if (typeof str === 'string') {
-//    ws.write(str + '\n')
-//  } else {
-//    ws.write(JSON.stringify(str, null, 2) + '\n')
-//  }
-//}
-//process.on('exit', () => ws.end())
-
-function createOptions() {
-  let config = []
-  try {
-    // extensions
-    // moduleDirectory
-    // main
-    // alias
-    config = require(path.join(os.homedir(), '.vim.gotofile.config.js'))
-  } catch (e) {}
-  if (typeof config === 'function') {
-    config = config(parent)
-  }
-  config.push(
-    {
-      fileType: ['.wxml']
-    },
-    {
-      fileType: ['.js', '.ts', '.jsx', '.tsx', '.es6', '.json', '.wxml', '.vue']
-    },
-    {
-      fileType: ['.css', '.scss', '.sass', '.wxss']
+async function getAlias(parent) {
+  const conf = '.eslintrc.js'
+  const paths = []
+  let current = parent
+  while (true) {
+    const next = path.dirname(current)
+    if (next === current) {
+      break
     }
-  )
-  const parentExt = path.extname(parent)
-  let baseOpts = config.find(o => o.fileType.includes(parentExt))
-  if (!baseOpts) process.exit(1)
-
-  let opts = {
-    alias: baseOpts.alias,
-    basedir: path.dirname(parent),
-    extensions: baseOpts.extensions || baseOpts.fileType
+    paths.push(path.join(next, conf))
+    current = next
   }
-  if (baseOpts.moduleDirectory) opts.moduleDirectory = baseOpts.moduleDirectory
-  if (baseOpts.main) {
-    opts.packageFilter = function (pkg, pkgFile) {
-      if (pkg[baseOpts.main]) {
-        pkg.main = pkg[baseOpts.main]
-      }
-      return pkg
-    }
+  const results = await Promise.all(paths.map(
+    p => fs.access(p).then(() => p, () => null)
+  ))
+  const file = results.filter(Boolean)[0]
+  if (!file) {
+    return {}
   }
-  return opts
-}
-
-async function bailout(tasks) {
-  for (let task of tasks) {
-    try {
-      const res = await task()
-      if (res) return res
-      if (res === false) return
-    } catch (e) {}
-  }
+  const { settings } = require(file)
+  return settings?.['import/resolver']?.alias?.map.reduce((o, [k, v]) => {
+      o[k] = v
+      return o
+    }, {})
+    || {}
 }
 
 function resolver(id, opts) {
-  return new Promise((rs, rj) => {
+  return new Promise((rs) => {
     resolve(id, opts, function (err, res) {
-      if (err) return rj(err)
-      rs(res)
+      rs(err ? '' : res)
     })
   })
 }
 
-async function resolveWithAlias(id, opts) {
-  if (!opts.alias) return
-  let alias = opts.alias
+async function resolveAlias(id, parent) {
+  const alias = await getAlias(parent)
 
   if (alias[id]) {
-    return resolver(alias[id], opts)
+    return alias[id]
   }
 
   for (let k of Object.keys(alias)) {
     if (id.startsWith(k + '/')) {
-      return resolver(path.resolve(alias[k], id.slice(k.length + 1)), opts)
+      return path.join(alias[k], id.slice(k.length))
     }
   }
+  return id
+}
+
+async function resolve_(id, parent, extensions) {
+  let options = {
+    basedir: path.dirname(parent),
+    extensions: extensions.split(','),
+  }
+  const id1 = await resolveAlias(id, parent)
+  const id2 = await resolver(id1, options)
+  const res = id2 || await resolver('./' + id1, options)
+  if (!res) {
+    throw new Error('Not Found')
+  }
+  const prefix = res.slice(0, -1 * path.extname(res).length)
+  return Promise.all(options.extensions.map(ext => {
+    const p = prefix + ext
+    return fs.access(p).then(() => p, () => '')
+  }))
 }
 
 async function main() {
-  const options = createOptions()
-  const res = await bailout([
-    () => resolver(id, options),
-    () => path.isAbsolute(id) ? false : undefined,
-    () => resolveWithAlias(id, options),
-    () => resolver('./' + id, options)
-  ])
-  if (res) process.stdout.write(res)
+  const id = process.argv[2]
+  const parent = process.argv[3]
+  const extensions = process.argv[4]
+  resolve_(id, parent, path.extname(id) || extensions).then(res => {
+    console.log(res.filter(Boolean).join('\n'))
+  }).catch(() => {})
 }
 main()
